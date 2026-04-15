@@ -1,0 +1,22 @@
+# LayerLab Backend Dependencies
+# ============================================================
+# Core API framework
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+websockets==12.0
+python-multipart==0.0.9
+
+# Tensor I/O — the ONLY way we touch weights (no torch.load!)
+safetensors==0.4.3
+
+# Math backend — CPU-only build is sufficient for merging on commodity hardware.
+# Replace with 'torch' (CUDA build) if a GPU host is available.
+torch==2.3.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+
+# Numerics
+numpy==1.26.4
+
+# Utilities
+pydantic==2.7.1
+pydantic-settings==2.2.1
+tqdm==4.66.4
