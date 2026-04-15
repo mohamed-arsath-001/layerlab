@@ -12,7 +12,8 @@ export function useMergeSocket() {
     if (wsRef.current) wsRef.current.close();
     resetMetrics();
 
-    const ws = new WebSocket('ws://localhost:8000/ws/merge');
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws/merge';
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     setSocketStatus('connecting');
 
