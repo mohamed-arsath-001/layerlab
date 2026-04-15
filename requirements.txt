@@ -11,7 +11,8 @@ safetensors==0.4.3
 
 # Math backend — CPU-only build is sufficient for merging on commodity hardware.
 # Replace with 'torch' (CUDA build) if a GPU host is available.
-torch==2.3.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.0+cpu
 
 # Numerics
 numpy==1.26.4
