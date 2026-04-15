@@ -36,6 +36,7 @@ from pydantic import BaseModel, Field, field_validator
 from probe import probe, probe_pair, ModelTopology, LayerBlock, TensorMeta
 from engine import MergeConfig, stream_merge
 from tensor_math import MergeAlgorithm
+from hub_utils import resolve_path
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +215,11 @@ async def api_probe(req: ProbeRequest) -> TopologyOut:
     Probe a single .safetensors file and return its Transformer topology.
     No weight data is loaded — only the JSON header is parsed.
     """
-    path = Path(req.path)
+    try:
+        path = resolve_path(req.path)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+        
     if not path.exists():
         raise HTTPException(status_code=404, detail=f"File not found: {req.path}")
     if path.suffix != ".safetensors":
@@ -237,15 +242,20 @@ async def api_probe_pair(req: ProbePairRequest) -> ProbePairOut:
     Probe both models simultaneously and return their topologies plus the
     sorted list of tensor keys common to both (eligible for merging).
     """
-    for p in (req.path_a, req.path_b):
-        path = Path(p)
-        if not path.exists():
+    try:
+        resolved_a = resolve_path(req.path_a)
+        resolved_b = resolve_path(req.path_b)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    for p, resolved_p in [("A", resolved_a), ("B", resolved_b)]:
+        if not resolved_p.exists():
             raise HTTPException(status_code=404, detail=f"File not found: {p}")
-        if path.suffix != ".safetensors":
+        if resolved_p.suffix != ".safetensors":
             raise HTTPException(status_code=400, detail=f"Not a .safetensors file: {p}")
 
     try:
-        topo_a, topo_b, common_keys = probe_pair(req.path_a, req.path_b)
+        topo_a, topo_b, common_keys = probe_pair(resolved_a, resolved_b)
     except Exception as exc:
         logger.exception("Probe-pair error")
         raise HTTPException(status_code=422, detail=str(exc))
@@ -264,7 +274,10 @@ async def api_validate(req: ValidateRequest) -> ValidateResponse:
     Quick file validation: exists, .safetensors extension, readable header.
     Used by the frontend to highlight invalid path inputs before running a merge.
     """
-    path = Path(req.path)
+    try:
+        path = resolve_path(req.path)
+    except Exception as e:
+        return ValidateResponse(valid=False, path=req.path, size_bytes=0, error_message=str(e))
 
     if not path.exists():
         return ValidateResponse(valid=False, path=req.path, size_bytes=0,
@@ -333,33 +346,45 @@ async def ws_merge(websocket: WebSocket) -> None:
         return
 
     # --- Validate input paths before starting the engine ----------------
-    for label, p in [("path_a", merge_req.path_a), ("path_b", merge_req.path_b)]:
-        path = Path(p)
-        if not path.exists():
+    resolved_paths = {}
+    try:
+        resolved_paths["path_a"] = resolve_path(merge_req.path_a)
+        resolved_paths["path_b"] = resolve_path(merge_req.path_b)
+        if merge_req.path_base:
+            resolved_paths["path_base"] = resolve_path(merge_req.path_base)
+        else:
+            resolved_paths["path_base"] = None
+    except Exception as e:
+        await websocket.send_json({"event_type": "error", "error_msg": str(e)})
+        await websocket.close(code=1003)
+        return
+
+    for label, p in [("path_a", resolved_paths["path_a"]), ("path_b", resolved_paths["path_b"])]:
+        if not p.exists():
             await websocket.send_json({
                 "event_type": "error",
-                "error_msg":  f"{label} not found: {p}",
+                "error_msg":  f"{label} not found on disk after resolution.",
             })
             await websocket.close(code=1003)
             return
 
-    if merge_req.path_base:
-        if not Path(merge_req.path_base).exists():
+    if resolved_paths.get("path_base"):
+        if not resolved_paths["path_base"].exists():
             await websocket.send_json({
                 "event_type": "error",
-                "error_msg":  f"path_base not found: {merge_req.path_base}",
+                "error_msg":  f"path_base not found on disk after resolution.",
             })
             await websocket.close(code=1003)
             return
 
     # --- Build engine config ---------------------------------------------
     config = MergeConfig(
-        path_a          = merge_req.path_a,
-        path_b          = merge_req.path_b,
+        path_a          = resolved_paths["path_a"],
+        path_b          = resolved_paths["path_b"],
         output_path     = merge_req.output_path,
         algorithm       = MergeAlgorithm(merge_req.algorithm),
         global_alpha    = merge_req.global_alpha,
-        path_base       = merge_req.path_base,
+        path_base       = resolved_paths["path_base"],
         per_layer_alpha = merge_req.per_layer_alpha,
         trim_fraction   = merge_req.trim_fraction,
         warn_threshold  = merge_req.warn_threshold,
