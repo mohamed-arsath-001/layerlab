@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import NeuralCanvas from './components/NeuralCanvas';
 import SurgicalOverlay from './components/SurgicalOverlay';
+import ModelDetailsPanel from './components/ModelDetailsPanel';
 import { useMergeStore } from './store/useMergeStore';
 import { Activity } from 'lucide-react';
 
@@ -62,7 +63,10 @@ function App() {
             </div>
           )}
 
-          {/* Right Side: Surgical Overlay Panel (Slides in) */}
+          {/* Right Side: Dissection Details Panel (Shows when no active layer is selected) */}
+          <ModelDetailsPanel isHidden={!!activeLayer} />
+
+          {/* Right Side: Surgical Overlay Panel (Shows when a distinct layer is clicked) */}
           <SurgicalOverlay activeLayer={activeLayer} onClose={() => setActiveLayer(null)} />
         </div>
 

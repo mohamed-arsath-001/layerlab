@@ -21,25 +21,31 @@ export default function Sidebar() {
   const handleProbe = async () => {
     setProbing(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/probe';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/probe-pair';
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: modelA })
+        body: JSON.stringify({ path_a: modelA, path_b: modelB })
       });
       if (res.ok) {
         const data = await res.json();
-        // Assuming backend returns { blocks: [...] } or an array of block names
-        setTopology(data);
+        const storeState = useMergeStore.getState();
+        storeState.setTopology(data.topology_a);
+        storeState.setTopologyA(data.topology_a);
+        storeState.setTopologyB(data.topology_b);
       } else {
         console.error("Probe failed:", await res.text());
-        // For testing/fallback if backend is mocked/down
-        setTopology({ blocks: Array.from({length: 32}, (_, i) => `model.layers.${i}`) });
+        const mockBlocks = Array.from({length: 32}, (_, i) => `model.layers.${i}`);
+        useMergeStore.getState().setTopology({ blocks: mockBlocks });
+        useMergeStore.getState().setTopologyA({ blocks: mockBlocks });
+        useMergeStore.getState().setTopologyB({ blocks: mockBlocks });
       }
     } catch (err) {
       console.error(err);
-      // Fallback for visualizer demo
-      setTopology({ blocks: Array.from({length: 32}, (_, i) => `model.layers.${i}`) });
+      const mockBlocks = Array.from({length: 32}, (_, i) => `model.layers.${i}`);
+      useMergeStore.getState().setTopology({ blocks: mockBlocks });
+      useMergeStore.getState().setTopologyA({ blocks: mockBlocks });
+      useMergeStore.getState().setTopologyB({ blocks: mockBlocks });
     }
     setProbing(false);
   };

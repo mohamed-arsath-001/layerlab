@@ -22,7 +22,13 @@ export const useMergeStore = create((set) => ({
   })),
 
   topology: null,
+  topologyA: null,
+  topologyB: null,
+  mergedTopology: null,
   setTopology: (topo) => set({ topology: topo }),
+  setTopologyA: (topo) => set({ topologyA: topo }),
+  setTopologyB: (topo) => set({ topologyB: topo }),
+  setMergedTopology: (topo) => set({ mergedTopology: topo }),
 
   progressPercent: 0,
   currentLayer: '',

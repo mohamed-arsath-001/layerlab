@@ -397,7 +397,7 @@ async def ws_merge(websocket: WebSocket) -> None:
 
     await websocket.send_json({
         "event_type": "merge_start",
-        "message":    f"Engine started. Algorithm: {config.algorithm.value.upper()}, α={config.global_alpha}",
+        "message":    f"Engine started. Algorithm: {config.algorithm.value.upper()}, alpha={config.global_alpha}",
         "config": {
             "algorithm":    config.algorithm.value,
             "global_alpha": config.global_alpha,
